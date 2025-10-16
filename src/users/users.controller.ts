@@ -59,8 +59,8 @@ export class UsersController {
   // ==================== SOLO ADMIN ====================
   
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  //@UseGuards(JwtAuthGuard, RolesGuard)
+  //@Roles(UserRole.ADMIN)
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.createUser(createUserDto);
   }
