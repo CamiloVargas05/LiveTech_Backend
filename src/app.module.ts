@@ -3,6 +3,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { TicketsModule } from './tickets/tickets.module';
+import { ChatModule } from './chat/chat.module';
+import { StreamingModule } from './streaming/streaming.module';
+import { StatsModule } from './stats/stats.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -29,12 +36,13 @@ import { AppService } from './app.service';
       }),
     }),
 
-    // Aquí irán los módulos que creemos después
-    // AuthModule,
-    // UsersModule,
-    // TicketsModule,
-    // ChatModule,
-    // StreamingModule,
+    AuthModule,
+    UsersModule,
+    TicketsModule,
+    ChatModule,
+    StreamingModule,
+    StatsModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
