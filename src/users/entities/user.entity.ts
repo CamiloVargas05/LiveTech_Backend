@@ -34,7 +34,7 @@ export class User {
   isActive: boolean;
 
   @Column({ type: 'varchar', nullable: true })
-  resetPasswordToken: string | null;
+  resetPasswordCode: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
   resetPasswordExpires: Date | null;

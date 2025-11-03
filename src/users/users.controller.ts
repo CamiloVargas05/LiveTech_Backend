@@ -15,7 +15,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ResetPasswordDto, VerifyCodeDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -35,6 +35,11 @@ export class UsersController {
   @Post('forgot-password')
   forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.usersService.forgotPassword(forgotPasswordDto);
+  }
+
+  @Post('verify-code')
+  verifyCode(@Body() verifyCodeDto: VerifyCodeDto) {
+    return this.usersService.verifyCode(verifyCodeDto);
   }
 
   @Post('reset-password')

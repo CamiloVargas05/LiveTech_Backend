@@ -12,34 +12,42 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ResetPasswordDto, VerifyCodeDto } from './dto/reset-password.dto';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class UsersService {
+  private transporter;
+
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+  ) {
+    // Configurar nodemailer con Gmail
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER, // Tu email de Gmail
+        pass: process.env.EMAIL_PASSWORD, // Tu contraseña de aplicación de Gmail
+      },
+    });
+  }
 
   // ==================== PÚBLICO ====================
 
   async register(registerDto: RegisterDto) {
-    // Verificar si el usuario ya existe
     const existingUser = await this.findByEmail(registerDto.email);
     if (existingUser) {
       throw new ConflictException('El email ya está registrado');
     }
 
-    // Hash de la contraseña
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
-    // Crear usuario con role "user" forzado
     const user = this.usersRepository.create({
       ...registerDto,
       password: hashedPassword,
-      role: UserRole.USER,  // Siempre "user" en registro público
+      role: UserRole.USER,
     });
 
     const savedUser = await this.usersRepository.save(user);
@@ -54,61 +62,104 @@ export class UsersService {
     const user = await this.findByEmail(forgotPasswordDto.email);
     
     if (!user) {
-      // Por seguridad, no revelamos si el email existe o no
-      return {
-        message: 'Si el email existe, recibirás instrucciones para recuperar tu contraseña',
-      };
+      throw new NotFoundException('Este email no está registrado en el sistema');
     }
 
-    // Generar token de recuperación
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = await bcrypt.hash(resetToken, 10);
-
-    // Guardar token y expiración (1 hora)
+    // Generar código de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Guardar código hasheado y expiración (15 minutos)
+    const hashedCode = await bcrypt.hash(code, 10);
     await this.usersRepository.update(user.id, {
-      resetPasswordToken: hashedToken,
-      resetPasswordExpires: new Date(Date.now() + 3600000), // 1 hora
+      resetPasswordCode: hashedCode,
+      resetPasswordExpires: new Date(Date.now() + 15 * 60000), // 15 minutos
     });
 
-    // TODO: Aquí deberías enviar un email con el token
-    // Por ahora lo retornamos (solo para desarrollo)
-    console.log('Token de recuperación:', resetToken);
+    // Enviar email con el código
+    try {
+      await this.transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: 'Código de recuperación de contraseña',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Recuperación de Contraseña</h2>
+            <p>Hola ${user.name},</p>
+            <p>Has solicitado recuperar tu contraseña. Tu código de verificación es:</p>
+            <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
+              ${code}
+            </div>
+            <p>Este código expirará en 15 minutos.</p>
+            <p>Si no solicitaste este cambio, puedes ignorar este correo.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="color: #888; font-size: 12px;">Este es un correo automático, por favor no responder.</p>
+          </div>
+        `,
+      });
+
+      return {
+        message: 'Código de verificación enviado a tu correo',
+      };
+    } catch (error) {
+      console.error('Error al enviar email:', error);
+      throw new BadRequestException('Error al enviar el correo de recuperación');
+    }
+  }
+
+  async verifyCode(verifyCodeDto: VerifyCodeDto) {
+    const { email, code } = verifyCodeDto;
+
+    const user = await this.findByEmail(email);
+    if (!user || !user.resetPasswordCode || !user.resetPasswordExpires) {
+      throw new BadRequestException('Código inválido o expirado');
+    }
+
+    // Verificar si el código ha expirado
+    if (new Date() > user.resetPasswordExpires) {
+      throw new BadRequestException('El código ha expirado');
+    }
+
+    // Verificar el código
+    const isCodeValid = await bcrypt.compare(code, user.resetPasswordCode);
+    if (!isCodeValid) {
+      throw new BadRequestException('Código incorrecto');
+    }
 
     return {
-      message: 'Si el email existe, recibirás instrucciones para recuperar tu contraseña',
-      // En producción, NO retornes el token
-      resetToken, // Solo para desarrollo
+      message: 'Código verificado correctamente',
+      valid: true,
     };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const { token, newPassword } = resetPasswordDto;
+    const { email, code, newPassword, confirmPassword } = resetPasswordDto;
 
-    // Buscar usuario con token válido
-    const users = await this.usersRepository.find();
-    let user: User | null = null;
-
-    for (const u of users) {
-      if (u.resetPasswordToken && u.resetPasswordExpires) {
-        const isTokenValid = await bcrypt.compare(token, u.resetPasswordToken);
-        const isTokenExpired = new Date() > u.resetPasswordExpires;
-
-        if (isTokenValid && !isTokenExpired) {
-          user = u;
-          break;
-        }
-      }
+    // Validar que las contraseñas coincidan
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('Las contraseñas no coinciden');
     }
 
-    if (!user) {
-      throw new BadRequestException('Token inválido o expirado');
+    const user = await this.findByEmail(email);
+    if (!user || !user.resetPasswordCode || !user.resetPasswordExpires) {
+      throw new BadRequestException('Código inválido o expirado');
+    }
+
+    // Verificar si el código ha expirado
+    if (new Date() > user.resetPasswordExpires) {
+      throw new BadRequestException('El código ha expirado');
+    }
+
+    // Verificar el código
+    const isCodeValid = await bcrypt.compare(code, user.resetPasswordCode);
+    if (!isCodeValid) {
+      throw new BadRequestException('Código incorrecto');
     }
 
     // Actualizar contraseña
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await this.usersRepository.update(user.id, {
       password: hashedPassword,
-      resetPasswordToken: null,
+      resetPasswordCode: null,
       resetPasswordExpires: null,
     });
 
@@ -137,20 +188,17 @@ export class UsersService {
   // ==================== SOLO ADMIN ====================
 
   async createUser(createUserDto: CreateUserDto): Promise<any> {
-    // Verificar si el email ya existe
     const existingUser = await this.findByEmail(createUserDto.email);
     if (existingUser) {
       throw new ConflictException('El email ya está registrado');
     }
 
-    // Hash de la contraseña
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
-    // Crear usuario (admin puede especificar role)
     const user = this.usersRepository.create({
       ...createUserDto,
       password: hashedPassword,
-      role: createUserDto.role || UserRole.USER, // Default a "user" si no se especifica
+      role: createUserDto.role || UserRole.USER,
     });
 
     const savedUser = await this.usersRepository.save(user);
@@ -168,17 +216,14 @@ export class UsersService {
   ): Promise<any> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user');
 
-    // Filtrar por rol
     if (role) {
       queryBuilder.andWhere('user.role = :role', { role });
     }
 
-    // Filtrar por estado activo
     if (isActive !== undefined) {
       queryBuilder.andWhere('user.isActive = :isActive', { isActive });
     }
 
-    // Búsqueda por nombre o email
     if (search) {
       queryBuilder.andWhere(
         '(user.name ILIKE :search OR user.email ILIKE :search)',
@@ -186,7 +231,6 @@ export class UsersService {
       );
     }
 
-    // Ordenar por fecha de creación (más recientes primero)
     queryBuilder.orderBy('user.createdAt', 'DESC');
 
     const users = await queryBuilder.getMany();
@@ -200,7 +244,6 @@ export class UsersService {
   async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<any> {
     const user = await this.findOne(id);
 
-    // Si se está actualizando el email, verificar que no exista
     if (updateUserDto.email && updateUserDto.email !== user.email) {
       const existingUser = await this.findByEmail(updateUserDto.email);
       if (existingUser) {
@@ -208,7 +251,6 @@ export class UsersService {
       }
     }
 
-    // Si se está actualizando la contraseña, hashearla
     if (updateUserDto.password) {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
     }
@@ -277,7 +319,7 @@ export class UsersService {
   }
 
   private sanitizeUser(user: User) {
-    const { password, resetPasswordToken, resetPasswordExpires, ...sanitized } = user;
+    const { password, resetPasswordCode, resetPasswordExpires, ...sanitized } = user;
     return sanitized;
   }
 }

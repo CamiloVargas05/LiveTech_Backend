@@ -25,14 +25,18 @@ import { UploadsModule } from './uploads/uploads.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.get('DB_HOST'),
-        port: configService.get('DB_PORT'),
-        username: configService.get('DB_USERNAME'),
-        password: configService.get('DB_PASSWORD'),
-        database: configService.get('DB_DATABASE'),
+        //host: configService.get('DB_HOST'),
+        //port: configService.get('DB_PORT'),
+        //username: configService.get('DB_USERNAME'),
+        //password: configService.get('DB_PASSWORD'),
+        //database: configService.get('DB_DATABASE'),
+        url: process.env.DATABASE_URL,
+        schema: configService.get('DB_SCHEMA', 'public'),
+
+
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true, // ⚠️ Solo en desarrollo, en producción usar migraciones
-        logging: true, // Ver las consultas SQL en la consola
+        logging: false, // Ver las consultas SQL en la consola
       }),
     }),
 

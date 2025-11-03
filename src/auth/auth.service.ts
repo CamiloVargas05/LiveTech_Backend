@@ -59,7 +59,7 @@ export class AuthService {
 
   // Método auxiliar para sanitizar usuario
   private sanitizeUser(user: User) {
-    const { password, resetPasswordToken, resetPasswordExpires, ...sanitized } = user;
+    const { password, resetPasswordCode, resetPasswordExpires, ...sanitized } = user;
     return sanitized;
   }
 }
