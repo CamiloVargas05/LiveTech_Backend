@@ -24,12 +24,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
+    // Validar que el usuario existe y está activo
     const user = await this.usersService.findOne(payload.sub);
     
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Usuario no autorizado');
     }
     
-    return user;
+    // Retornar solo los datos necesarios del payload, no el usuario completo
+    return { 
+      id: payload.sub,
+      sub: payload.sub, // Por compatibilidad con código existente
+      email: payload.email, 
+      role: payload.role 
+    };
   }
 }

@@ -1,8 +1,8 @@
-import { 
-  Injectable, 
-  NotFoundException, 
+import {
+  Injectable,
+  NotFoundException,
   BadRequestException,
-  ConflictException 
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -60,14 +60,16 @@ export class UsersService {
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     const user = await this.findByEmail(forgotPasswordDto.email);
-    
+
     if (!user) {
-      throw new NotFoundException('Este email no está registrado en el sistema');
+      throw new NotFoundException(
+        'Este email no está registrado en el sistema',
+      );
     }
 
     // Generar código de 6 dígitos
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     // Guardar código hasheado y expiración (15 minutos)
     const hashedCode = await bcrypt.hash(code, 10);
     await this.usersRepository.update(user.id, {
@@ -102,7 +104,9 @@ export class UsersService {
       };
     } catch (error) {
       console.error('Error al enviar email:', error);
-      throw new BadRequestException('Error al enviar el correo de recuperación');
+      throw new BadRequestException(
+        'Error al enviar el correo de recuperación',
+      );
     }
   }
 
@@ -178,7 +182,7 @@ export class UsersService {
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
     await this.usersRepository.update(userId, updateProfileDto);
     const updatedUser = await this.findOne(userId);
-    
+
     return {
       message: 'Perfil actualizado exitosamente',
       user: this.sanitizeUser(updatedUser),
@@ -218,8 +222,10 @@ export class UsersService {
 
     if (role) {
       queryBuilder.andWhere('user.role = :role', { role });
+      console.log('Aplicando filtro role:', role);
     }
 
+    // Solo aplicar el filtro si isActive NO es undefined
     if (isActive !== undefined) {
       queryBuilder.andWhere('user.isActive = :isActive', { isActive });
     }
@@ -237,10 +243,9 @@ export class UsersService {
 
     return {
       total: users.length,
-      users: users.map(user => this.sanitizeUser(user)),
+      users: users.map((user) => this.sanitizeUser(user)),
     };
   }
-
   async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<any> {
     const user = await this.findOne(id);
 
@@ -266,7 +271,7 @@ export class UsersService {
 
   async toggleActive(id: string): Promise<any> {
     const user = await this.findOne(id);
-    
+
     await this.usersRepository.update(id, {
       isActive: !user.isActive,
     });
@@ -319,7 +324,8 @@ export class UsersService {
   }
 
   private sanitizeUser(user: User) {
-    const { password, resetPasswordCode, resetPasswordExpires, ...sanitized } = user;
+    const { password, resetPasswordCode, resetPasswordExpires, ...sanitized } =
+      user;
     return sanitized;
   }
 }

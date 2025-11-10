@@ -10,6 +10,7 @@ import { ChatModule } from './chat/chat.module';
 import { StreamingModule } from './streaming/streaming.module';
 import { StatsModule } from './stats/stats.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { MantenimientoModule } from './mantenimiento/mantenimiento.module';
 
 @Module({
   imports: [
@@ -35,7 +36,7 @@ import { UploadsModule } from './uploads/uploads.module';
 
 
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // ⚠️ Solo en desarrollo, en producción usar migraciones
+        synchronize: false, // ⚠️ Solo en desarrollo, en producción usar migraciones
         logging: false, // Ver las consultas SQL en la consola
       }),
     }),
@@ -47,6 +48,7 @@ import { UploadsModule } from './uploads/uploads.module';
     StreamingModule,
     StatsModule,
     UploadsModule,
+    MantenimientoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,10 +1,10 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
   UseGuards,
   Request,
   Query,
@@ -26,7 +26,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   // ==================== PÚBLICO ====================
-  
+
   @Post('register')
   register(@Body() registerDto: RegisterDto) {
     return this.usersService.register(registerDto);
@@ -48,7 +48,7 @@ export class UsersController {
   }
 
   // ==================== AUTENTICADO (cualquier rol) ====================
-  
+
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   getProfile(@Request() req) {
@@ -62,7 +62,7 @@ export class UsersController {
   }
 
   // ==================== SOLO ADMIN ====================
-  
+
   @Post()
   //@UseGuards(JwtAuthGuard, RolesGuard)
   //@Roles(UserRole.ADMIN)
@@ -78,7 +78,16 @@ export class UsersController {
     @Query('isActive') isActive?: string,
     @Query('search') search?: string,
   ) {
-    return this.usersService.findAll(role, isActive === 'true', search);
+    // Convertir isActive solo si viene explícitamente como 'true' o 'false'
+    let isActiveBoolean: boolean | undefined = undefined;
+
+    if (isActive === 'true') {
+      isActiveBoolean = true;
+    } else if (isActive === 'false') {
+      isActiveBoolean = false;
+    }
+
+    return this.usersService.findAll(role, isActiveBoolean, search);
   }
 
   @Get('stats/overview')
