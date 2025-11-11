@@ -18,6 +18,7 @@ async function bootstrap() {
   configService.get('FRONTEND_URL'),
   'http://localhost:3000',
   'http://localhost:3001',
+  'https://livetech-ventas.up.railway.app',
   'https://livetechbackend-ventas.up.railway.app'
 ].filter(Boolean),
     credentials: true,
