@@ -20,10 +20,18 @@ import { EstadoMantenimiento } from '../mantenimiento/entities/mantenimiento.ent
 @Injectable()
 @WebSocketGateway({
   cors: {
-    origin: '*', // En producción, especifica tu dominio
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://livetech-ventas.up.railway.app',
+      'https://livetechbackend-ventas.up.railway.app',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean),
     credentials: true,
+    methods: ['GET', 'POST'],
   },
-  namespace: '/streaming',
+  namespace: 'streaming', // ← SIN barra inicial (esto es MUY importante)
+  transports: ['websocket', 'polling'], // ← Agregar esto
 })
 export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
@@ -40,17 +48,17 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     private jwtService: JwtService,
     private mantenimientoService: MantenimientoService,
   ) {
-  console.log('🏗️ StreamingGateway - Constructor ejecutado');
-  console.log('✅ JwtService inyectado:', !!jwtService);
-  console.log('✅ MantenimientoService inyectado:', !!mantenimientoService);
-}
+    console.log('🏗️ StreamingGateway - Constructor ejecutado');
+    console.log('✅ JwtService inyectado:', !!jwtService);
+    console.log('✅ MantenimientoService inyectado:', !!mantenimientoService);
+  }
 
   // ==================== CONEXIÓN Y DESCONEXIÓN ====================
 
   afterInit(server: Server) {
     this.logger.log('========================================');
     this.logger.log('🚀 WebSocket Gateway INICIALIZADO');
-    this.logger.log('📡 Namespace: /streaming');
+    this.logger.log('📡 Namespace: streaming'); // ← Sin barra
     this.logger.log('🌐 Escuchando conexiones...');
     this.logger.log('========================================');
   }
@@ -132,9 +140,13 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { mantenimientoId: string },
   ) {
+    this.logger.log(`📡 Evento recibido: iniciar-stream de ${client.id}`);
+    
     try {
       const tecnicoId = client.data.userId;
       const tecnicoRole = client.data.userRole;
+
+      this.logger.log(`👤 Usuario: ${tecnicoId}, Rol: ${tecnicoRole}`);
 
       // Validar que sea técnico
       if (tecnicoRole !== 'tecnico') {
@@ -183,7 +195,7 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
       // Unir al técnico a la sala del mantenimiento
       client.join(`mantenimiento-${data.mantenimientoId}`);
 
-      this.logger.log(`Stream iniciado: ${data.mantenimientoId} por técnico ${tecnicoId}`);
+      this.logger.log(`✅ Stream iniciado: ${data.mantenimientoId} por técnico ${tecnicoId}`);
 
       client.emit('stream-iniciado', {
         mantenimientoId: data.mantenimientoId,
@@ -202,25 +214,37 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { mantenimientoId: string },
   ) {
+    this.logger.log(`👁️ Evento recibido: unirse-stream de ${client.id}`);
+    this.logger.log(`📦 Mantenimiento ID: ${data.mantenimientoId}`);
+    
     try {
       const usuarioId = client.data.userId;
       const usuarioRole = client.data.userRole;
 
+      this.logger.log(`👤 Usuario: ${usuarioId}, Rol: ${usuarioRole}`);
+
       // Validar que sea usuario
       if (usuarioRole !== 'user') {
+        this.logger.error(`❌ Usuario con rol ${usuarioRole} intentó unirse`);
         client.emit('error', { message: 'Solo los usuarios pueden ver streams' });
         return;
       }
 
       // Verificar que exista una sesión activa
       const sesion = this.sesionesActivas.get(data.mantenimientoId);
+      
+      this.logger.log(`🔍 Sesiones activas: ${this.sesionesActivas.size}`);
+      this.logger.log(`🔍 Sesión encontrada: ${!!sesion}`);
+      
       if (!sesion) {
+        this.logger.error(`❌ No hay sesión activa para mantenimiento: ${data.mantenimientoId}`);
         client.emit('error', { message: 'No hay un stream activo para este mantenimiento' });
         return;
       }
 
       // Validar que el usuario es el dueño del mantenimiento
       if (sesion.usuarioId !== usuarioId) {
+        this.logger.error(`❌ Usuario ${usuarioId} no es dueño del mantenimiento`);
         client.emit('error', { message: 'No tienes permiso para ver este stream' });
         return;
       }
@@ -231,7 +255,7 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
       // Unir al usuario a la sala del mantenimiento
       client.join(`mantenimiento-${data.mantenimientoId}`);
 
-      this.logger.log(`Usuario ${usuarioId} se unió al stream: ${data.mantenimientoId}`);
+      this.logger.log(`✅ Usuario ${usuarioId} se unió al stream: ${data.mantenimientoId}`);
 
       // Notificar al técnico que el usuario se conectó
       this.server.to(sesion.tecnicoSocketId).emit('usuario-conectado', {
@@ -424,5 +448,4 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
   getSesionesActivas(): SesionStreaming[] {
     return Array.from(this.sesionesActivas.values());
   }
-  
 }
