@@ -3,7 +3,7 @@ const { io } = require('socket.io-client');
 const readline = require('readline');
 
 const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmOWUwNWRkNS05NDhmLTRkYjItYTM1Mi1hMTVkMDExY2JjNzYiLCJlbWFpbCI6Im1hbm9sb21hbm9saXRlQGdtYWlsLmNvbSIsInJvbGUiOiJ0ZWNuaWNvIiwiaWF0IjoxNzYyODE4MzQ4LCJleHAiOjE3NjM0MjMxNDh9.xKmDtYifEm6zZrjVImEksgv0y7Eh_TyYZy3vpFZVnts';
-const MANTENIMIENTO_ID = 'c56eb98d-4b35-467b-9d1a-dc3d6e3cd2d9';
+const MANTENIMIENTO_ID = '1511332f-0041-4f43-b461-a4bfa04b2a3e';
 
 console.log('🔄 Conectando al WebSocket...\n');
 

@@ -23,7 +23,7 @@ import { EstadoMantenimiento } from '../mantenimiento/entities/mantenimiento.ent
     origin: '*', // En producción, especifica tu dominio
     credentials: true,
   },
-  namespace: 'streaming',
+  namespace: '/streaming',
 })
 export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
