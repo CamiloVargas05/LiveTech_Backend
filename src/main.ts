@@ -14,7 +14,12 @@ async function bootstrap() {
   
   // Habilitar CORS para el frontend
   app.enableCors({
-    origin: configService.get('FRONTEND_URL') || 'http://localhost:3001',
+    origin: [
+  configService.get('FRONTEND_URL'),
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://livetechbackend-ventas.up.railway.app'
+].filter(Boolean),
     credentials: true,
   });
 
