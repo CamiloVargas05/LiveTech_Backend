@@ -1,8 +1,9 @@
-// mantenimiento.service.ts
+
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -410,6 +411,7 @@ async finalizarMantenimiento(id: string, tecnicoId: string) {
   };
 }
 
+
 // Template de email para mantenimiento finalizado
 private generarEmailMantenimientoFinalizado(nombreUsuario: string, nombreTecnico: string, nombreEquipo: string): string {
   return `
@@ -726,4 +728,259 @@ private generarEmailMantenimientoFinalizado(nombreUsuario: string, nombreTecnico
       </html>
     `;
   }
+
+  // ==================== ESTADÍSTICAS ====================
+
+async obtenerEstadisticas(userId: string, role: string) {
+  let queryBuilder = this.mantenimientoRepository.createQueryBuilder('mantenimiento')
+    .leftJoinAndSelect('mantenimiento.usuario', 'usuario')
+    .leftJoinAndSelect('mantenimiento.tecnico', 'tecnico');
+
+  // Filtrar según el rol
+  if (role === 'tecnico') {
+    queryBuilder = queryBuilder.where('mantenimiento.tecnicoId = :userId', { userId });
+  } else if (role === 'user') {
+    queryBuilder = queryBuilder.where('mantenimiento.usuarioId = :userId', { userId });
+  }
+  // Si es 'admin', no filtra (ve todo)
+
+  const mantenimientos = await queryBuilder.getMany();
+
+  // Calcular estadísticas
+  const total = mantenimientos.length;
+  const pendientes = mantenimientos.filter(m => m.estado === EstadoMantenimiento.PENDIENTE).length;
+  const enRevision = mantenimientos.filter(m => m.estado === EstadoMantenimiento.EN_REVISION).length;
+  const finalizados = mantenimientos.filter(m => m.estado === EstadoMantenimiento.FINALIZADO).length;
+
+  // Estadísticas por tipo de equipo
+  const equiposContador = mantenimientos.reduce((acc, m) => {
+    const equipo = m.nombreEquipo || 'Sin especificar';
+    acc[equipo] = (acc[equipo] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Estadísticas por marca
+  const marcasContador = mantenimientos.reduce((acc, m) => {
+    const marca = m.marca || 'Sin especificar';
+    acc[marca] = (acc[marca] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Mantenimientos recientes (últimos 5)
+  const recientes = mantenimientos
+    .sort((a, b) => new Date(b.creadoEn).getTime() - new Date(a.creadoEn).getTime())
+    .slice(0, 5)
+    .map(m => ({
+      id: m.id,
+      nombreEquipo: m.nombreEquipo,
+      marca: m.marca,
+      modelo: m.modelo,
+      descripcionProblema: m.descripcionProblema,
+      estado: m.estado,
+      fechaCreacion: m.creadoEn,
+      fotoUrl: m.fotoUrl,
+      usuario: m.usuario ? { name: m.usuario.name, email: m.usuario.email } : null,
+      tecnico: m.tecnico ? { name: m.tecnico.name, email: m.tecnico.email } : null,
+    }));
+
+  return {
+    resumen: {
+      total,
+      pendientes,
+      enRevision,
+      finalizados,
+      porcentajeFinalizado: total > 0 ? ((finalizados / total) * 100).toFixed(1) : 0,
+    },
+    porEquipo: equiposContador,
+    porMarca: marcasContador,
+    recientes,
+  };
+}
+
+async obtenerResumenGeneral(userId: string, role: string) {
+  let queryBuilder = this.mantenimientoRepository.createQueryBuilder('mantenimiento');
+
+  // Filtrar según el rol
+  if (role === 'tecnico') {
+    queryBuilder = queryBuilder.where('mantenimiento.tecnicoId = :userId', { userId });
+  } else if (role === 'user') {
+    queryBuilder = queryBuilder.where('mantenimiento.usuarioId = :userId', { userId });
+  }
+
+  const mantenimientos = await queryBuilder.getMany();
+
+  // Estadísticas por mes (últimos 6 meses)
+  const hoy = new Date();
+  const hace6Meses = new Date();
+  hace6Meses.setMonth(hoy.getMonth() - 6);
+
+  const porMes = mantenimientos
+    .filter(m => new Date(m.creadoEn) >= hace6Meses)
+    .reduce((acc, m) => {
+      const mes = new Date(m.creadoEn).toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+      if (!acc[mes]) {
+        acc[mes] = { total: 0, finalizados: 0, pendientes: 0, enRevision: 0 };
+      }
+      acc[mes].total++;
+      if (m.estado === EstadoMantenimiento.FINALIZADO) acc[mes].finalizados++;
+      if (m.estado === EstadoMantenimiento.PENDIENTE) acc[mes].pendientes++;
+      if (m.estado === EstadoMantenimiento.EN_REVISION) acc[mes].enRevision++;
+      return acc;
+    }, {});
+
+  return {
+    totalMantenimientos: mantenimientos.length,
+    estadisticasPorMes: porMes,
+    tasaExito: {
+      finalizados: mantenimientos.filter(m => m.estado === EstadoMantenimiento.FINALIZADO).length,
+      total: mantenimientos.length,
+      porcentaje: mantenimientos.length > 0 
+        ? ((mantenimientos.filter(m => m.estado === EstadoMantenimiento.FINALIZADO).length / mantenimientos.length) * 100).toFixed(1)
+        : 0,
+    },
+  };
+}
+
+// ==================== HISTORIAL ====================
+
+async obtenerHistorialCompletados(userId: string, role: string) {
+  let queryBuilder = this.mantenimientoRepository.createQueryBuilder('mantenimiento')
+    .leftJoinAndSelect('mantenimiento.usuario', 'usuario')
+    .leftJoinAndSelect('mantenimiento.tecnico', 'tecnico')
+    .where('mantenimiento.estado = :estado', { estado: EstadoMantenimiento.FINALIZADO });
+
+  // Filtrar según el rol
+  if (role === 'tecnico') {
+    queryBuilder = queryBuilder.andWhere('mantenimiento.tecnicoId = :userId', { userId });
+  } else if (role === 'user') {
+    queryBuilder = queryBuilder.andWhere('mantenimiento.usuarioId = :userId', { userId });
+  }
+
+  queryBuilder = queryBuilder.orderBy('mantenimiento.actualizadoEn', 'DESC');
+
+  const historial = await queryBuilder.getMany();
+
+  // Formatear historial con información detallada
+  const historialFormateado = historial.map(m => {
+    return {
+      id: m.id,
+      equipo: {
+        nombre: m.nombreEquipo,
+        marca: m.marca,
+        modelo: m.modelo,
+      },
+      problema: m.descripcionProblema,
+      estado: m.estado,
+      fechas: {
+        creacion: m.creadoEn,
+        ultimaActualizacion: m.actualizadoEn,
+      },
+      usuario: m.usuario ? {
+        id: m.usuario.id,
+        nombre: m.usuario.name,
+        email: m.usuario.email,
+        telefono: m.usuario.phone,
+      } : null,
+      tecnico: m.tecnico ? {
+        id: m.tecnico.id,
+        nombre: m.tecnico.name,
+        email: m.tecnico.email,
+      } : null,
+      fotoUrl: m.fotoUrl,
+    };
+  });
+
+  // Estadísticas del historial
+  const estadisticas = {
+    totalFinalizados: historialFormateado.length,
+    equiposMasAtendidos: this.obtenerEquiposMasAtendidos(historialFormateado),
+    marcasMasAtendidas: this.obtenerMarcasMasAtendidas(historialFormateado),
+  };
+
+  return {
+    estadisticas,
+    historial: historialFormateado,
+  };
+}
+
+async obtenerDetalleHistorial(id: string, userId: string, role: string) {
+  const mantenimiento = await this.mantenimientoRepository.findOne({
+    where: { id },
+    relations: ['usuario', 'tecnico'],
+  });
+
+  if (!mantenimiento) {
+    throw new NotFoundException('Mantenimiento no encontrado');
+  }
+
+  // Verificar permisos según rol
+  if (role === 'tecnico' && mantenimiento.tecnicoId !== userId) {
+    throw new ForbiddenException('No tienes permiso para ver este mantenimiento');
+  }
+
+  if (role === 'user' && mantenimiento.usuarioId !== userId) {
+    throw new ForbiddenException('No tienes permiso para ver este mantenimiento');
+  }
+
+  return {
+    id: mantenimiento.id,
+    equipo: {
+      nombre: mantenimiento.nombreEquipo,
+      marca: mantenimiento.marca,
+      modelo: mantenimiento.modelo,
+    },
+    detalles: {
+      descripcionProblema: mantenimiento.descripcionProblema,
+      estado: mantenimiento.estado,
+    },
+    timeline: {
+      fechaCreacion: mantenimiento.creadoEn,
+      ultimaActualizacion: mantenimiento.actualizadoEn,
+    },
+    participantes: {
+      usuario: mantenimiento.usuario ? {
+        id: mantenimiento.usuario.id,
+        nombre: mantenimiento.usuario.name,
+        email: mantenimiento.usuario.email,
+        telefono: mantenimiento.usuario.phone,
+      } : null,
+      tecnico: mantenimiento.tecnico ? {
+        id: mantenimiento.tecnico.id,
+        nombre: mantenimiento.tecnico.name,
+        email: mantenimiento.tecnico.email,
+      } : null,
+    },
+    multimedia: {
+      fotoUrl: mantenimiento.fotoUrl,
+    },
+  };
+}
+
+// ==================== MÉTODOS AUXILIARES ====================
+
+private obtenerEquiposMasAtendidos(historial: any[]): any[] {
+  const contador = historial.reduce((acc, h) => {
+    const equipo = h.equipo.nombre || 'Sin especificar';
+    acc[equipo] = (acc[equipo] || 0) + 1;
+    return acc;
+  }, {});
+
+  return Object.entries(contador)
+    .map(([equipo, cantidad]) => ({ equipo, cantidad }))
+    .sort((a: any, b: any) => b.cantidad - a.cantidad)
+    .slice(0, 5);
+}
+
+private obtenerMarcasMasAtendidas(historial: any[]): any[] {
+  const contador = historial.reduce((acc, h) => {
+    const marca = h.equipo.marca || 'Sin especificar';
+    acc[marca] = (acc[marca] || 0) + 1;
+    return acc;
+  }, {});
+
+  return Object.entries(contador)
+    .map(([marca, cantidad]) => ({ marca, cantidad }))
+    .sort((a: any, b: any) => b.cantidad - a.cantidad)
+    .slice(0, 5);
+}
 }

@@ -107,4 +107,28 @@ finalizarMantenimiento(@Param('id') id: string, @Request() req) {
   iniciarMantenimiento(@Param('id') id: string, @Request() req) {
     return this.mantenimientoService.iniciarMantenimiento(id, req.user.sub);
   }
+
+  // ==================== ESTADÍSTICAS ====================
+
+@Get('estadisticas/dashboard')
+obtenerEstadisticas(@Request() req) {
+  return this.mantenimientoService.obtenerEstadisticas(req.user.sub, req.user.role);
+}
+
+@Get('estadisticas/resumen')
+obtenerResumenGeneral(@Request() req) {
+  return this.mantenimientoService.obtenerResumenGeneral(req.user.sub, req.user.role);
+}
+
+// ==================== HISTORIAL ====================
+
+@Get('historial/completados')
+obtenerHistorialCompletados(@Request() req) {
+  return this.mantenimientoService.obtenerHistorialCompletados(req.user.sub, req.user.role);
+}
+
+@Get('historial/detalle/:id')
+obtenerDetalleHistorial(@Param('id') id: string, @Request() req) {
+  return this.mantenimientoService.obtenerDetalleHistorial(id, req.user.sub, req.user.role);
+} 
 }
