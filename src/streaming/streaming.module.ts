@@ -1,9 +1,23 @@
+// streaming/streaming.module.ts
 import { Module } from '@nestjs/common';
-import { StreamingService } from './streaming.service';
-import { StreamingController } from './streaming.controller';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { StreamingGateway } from './streaming.gateway';
+import { MantenimientoModule } from '../mantenimiento/mantenimiento.module';
 
 @Module({
-  controllers: [StreamingController],
-  providers: [StreamingService],
+  imports: [
+    MantenimientoModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '7d' },
+      }),
+    }),
+  ],
+  providers: [StreamingGateway],
+  exports: [StreamingGateway],
 })
 export class StreamingModule {}

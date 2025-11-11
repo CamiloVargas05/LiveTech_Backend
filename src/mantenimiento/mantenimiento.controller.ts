@@ -49,6 +49,13 @@ export class MantenimientoController {
   ) {
     return this.mantenimientoService.crear(crearMantenimientoDto, foto);
   }
+  
+
+@Post(':id/finalizar')
+@Roles(UserRole.TECNICO)
+finalizarMantenimiento(@Param('id') id: string, @Request() req) {
+  return this.mantenimientoService.finalizarMantenimiento(id, req.user.sub);
+}
 
   @Get()
   @Roles(UserRole.ADMIN)

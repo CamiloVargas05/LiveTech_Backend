@@ -45,10 +45,11 @@ import { MantenimientoModule } from './mantenimiento/mantenimiento.module';
     UsersModule,
     TicketsModule,
     ChatModule,
+    MantenimientoModule,
     StreamingModule,
     StatsModule,
     UploadsModule,
-    MantenimientoModule,
+    
   ],
   controllers: [AppController],
   providers: [AppService],

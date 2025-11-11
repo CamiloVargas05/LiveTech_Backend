@@ -27,9 +27,9 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.6",
-    "@nestjs/platform-socket.io": "^11.1.6",
+    "@nestjs/platform-socket.io": "^11.1.8",
     "@nestjs/typeorm": "^11.0.0",
-    "@nestjs/websockets": "^11.1.6",
+    "@nestjs/websockets": "^11.1.8",
     "@supabase/supabase-js": "^2.80.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -43,6 +43,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "typeorm": "^0.3.27"
   },
   "devDependencies": {
@@ -58,6 +59,7 @@
     "@types/node": "^22.10.7",
     "@types/nodemailer": "^7.0.3",
     "@types/passport-jwt": "^4.0.1",
+    "@types/socket.io": "^3.0.1",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

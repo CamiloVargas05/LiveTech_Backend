@@ -366,6 +366,135 @@ export class MantenimientoService {
         : null,
     };
   }
+  // mantenimiento.service.ts - Agregar este método
+
+async finalizarMantenimiento(id: string, tecnicoId: string) {
+  const mantenimiento = await this.encontrarUnoConRelaciones(id);
+
+  // Validar que el técnico que finaliza es el asignado
+  if (mantenimiento.tecnicoId !== tecnicoId) {
+    throw new BadRequestException('No estás asignado a este mantenimiento');
+  }
+
+  // Validar que esté en estado EN_REVISION
+  if (mantenimiento.estado !== EstadoMantenimiento.EN_REVISION) {
+    throw new BadRequestException('Este mantenimiento no está en revisión');
+  }
+
+  // Actualizar estado a FINALIZADO
+  await this.mantenimientoRepository.update(id, {
+    estado: EstadoMantenimiento.FINALIZADO,
+  });
+
+  const actualizado = await this.encontrarUnoConRelaciones(id);
+
+  // Enviar email al usuario (opcional)
+  try {
+    await this.transporter.sendMail({
+      from: this.configService.get<string>('EMAIL_USER'),
+      to: actualizado.usuario.email,
+      subject: '✅ Mantenimiento Finalizado - LiveTech',
+      html: this.generarEmailMantenimientoFinalizado(
+        actualizado.usuario.name,
+        actualizado.tecnico.name,
+        actualizado.nombreEquipo
+      ),
+    });
+  } catch (error) {
+    console.error('Error al enviar email:', error);
+  }
+
+  return {
+    message: 'Mantenimiento finalizado exitosamente',
+    mantenimiento: this.sanitizarMantenimiento(actualizado),
+  };
+}
+
+// Template de email para mantenimiento finalizado
+private generarEmailMantenimientoFinalizado(nombreUsuario: string, nombreTecnico: string, nombreEquipo: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f0fdf4;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; padding: 40px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center;">
+                  <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                    <tr>
+                      <td style="background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); padding: 12px 24px; border-radius: 12px;">
+                        <table cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="padding-right: 12px; vertical-align: middle;">
+                              <div style="width: 32px; height: 32px; background-color: white; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; padding: 8px;">
+                                <span style="font-size: 20px;">🎧</span>
+                              </div>
+                            </td>
+                            <td style="vertical-align: middle;">
+                              <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700; line-height: 1;">
+                                Live<span style="color: #d1fae5;">Tech</span>
+                              </h1>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 40px 30px;">
+                  <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                      <span style="font-size: 40px;">✅</span>
+                    </div>
+                    <h2 style="color: #1f2937; font-size: 26px; margin: 0 0 12px 0; font-weight: 700;">¡Mantenimiento Completado!</h2>
+                    <p style="color: #10b981; font-size: 16px; margin: 0; font-weight: 600;">Tu dispositivo está listo</p>
+                  </div>
+                  
+                  <p style="color: #6b7280; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">Hola <strong>${nombreUsuario}</strong>,</p>
+                  <p style="color: #6b7280; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">El técnico <strong style="color: #10b981;">${nombreTecnico}</strong> ha finalizado el mantenimiento de tu dispositivo <strong>${nombreEquipo}</strong>.</p>
+                  
+                  <!-- Info Card -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-radius: 12px; border: 2px solid #10b981;">
+                    <tr>
+                      <td style="padding: 30px; text-align: center;">
+                        <h3 style="color: #047857; font-size: 20px; margin: 0 0 16px 0; font-weight: 700;">📋 Estado Final</h3>
+                        <p style="color: #065f46; font-size: 14px; line-height: 1.6; margin: 0;">
+                          El mantenimiento se ha completado exitosamente. Puedes recoger tu dispositivo en nuestras instalaciones.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <p style="color: #6b7280; font-size: 16px; line-height: 1.6; margin: 30px 0 0 0;">Gracias por confiar en LiveTech.</p>
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+                  <p style="color: #9ca3af; font-size: 12px; margin: 0 0 8px 0;">🔧 Tecnología 2025 - Soporte del Futuro</p>
+                  <p style="color: #9ca3af; font-size: 12px; margin: 0;">Este es un correo automático, por favor no responder.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
 
   // Templates de email con diseño de LiveTech
   private generarEmailNuevoMantenimiento(
