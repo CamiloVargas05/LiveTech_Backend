@@ -12,10 +12,11 @@ export interface MensajeChat {
   mantenimientoId: string;
   usuarioId: string;
   usuarioNombre: string;
+  usuarioEmail?: string; // ← Agregar
   mensaje: string;
   timestamp: Date;
+  clientId?: string; // ← Agregar
 }
-
 export interface DatosWebRTC {
   mantenimientoId: string;
   offer?: RTCSessionDescriptionInit;

@@ -348,42 +348,44 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
   // ==================== CHAT EN TIEMPO REAL ====================
 
   @SubscribeMessage('chat-mensaje')
-  async handleChatMensaje(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { mantenimientoId: string; mensaje: string },
-  ) {
-    try {
-      const sesion = this.sesionesActivas.get(data.mantenimientoId);
-      if (!sesion) {
-        client.emit('error', { message: 'Sesión no encontrada' });
-        return;
-      }
-
-      const userId = client.data.userId;
-      const userName = client.data.userEmail;
-
-      // Validar que el usuario pertenece a esta sesión
-      if (userId !== sesion.tecnicoId && userId !== sesion.usuarioId) {
-        client.emit('error', { message: 'No tienes permiso para enviar mensajes en este chat' });
-        return;
-      }
-
-      const mensaje: MensajeChat = {
-        mantenimientoId: data.mantenimientoId,
-        usuarioId: userId,
-        usuarioNombre: userName,
-        mensaje: data.mensaje,
-        timestamp: new Date(),
-      };
-
-      // Enviar mensaje a toda la sala (técnico y usuario)
-      this.server.to(`mantenimiento-${data.mantenimientoId}`).emit('chat-mensaje', mensaje);
-
-      this.logger.log(`Mensaje en mantenimiento ${data.mantenimientoId}: ${data.mensaje}`);
-    } catch (error) {
-      this.logger.error(`Error en chat: ${error.message}`);
+async handleChatMensaje(
+  @ConnectedSocket() client: Socket,
+  @MessageBody() data: { mantenimientoId: string; mensaje: string; clientId?: string; usuarioEmail?: string },
+) {
+  try {
+    const sesion = this.sesionesActivas.get(data.mantenimientoId);
+    if (!sesion) {
+      client.emit('error', { message: 'Sesión no encontrada' });
+      return;
     }
+
+    const userId = client.data.userId;
+    const userName = client.data.userEmail;
+
+    // Validar que el usuario pertenece a esta sesión
+    if (userId !== sesion.tecnicoId && userId !== sesion.usuarioId) {
+      client.emit('error', { message: 'No tienes permiso para enviar mensajes en este chat' });
+      return;
+    }
+
+    const mensaje: MensajeChat = {
+      mantenimientoId: data.mantenimientoId,
+      usuarioId: userId,
+      usuarioNombre: userName,
+      usuarioEmail: userName, // ← Agregar esto
+      mensaje: data.mensaje,
+      timestamp: new Date(),
+      clientId: data.clientId, // ← Agregar esto para tracking
+    };
+
+    // Enviar mensaje a toda la sala (técnico y usuario)
+    this.server.to(`mantenimiento-${data.mantenimientoId}`).emit('chat-mensaje', mensaje);
+
+    this.logger.log(`Mensaje en mantenimiento ${data.mantenimientoId}: ${data.mensaje}`);
+  } catch (error) {
+    this.logger.error(`Error en chat: ${error.message}`);
   }
+}
 
   // ==================== FINALIZAR STREAM ====================
 
