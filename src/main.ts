@@ -18,6 +18,7 @@ async function bootstrap() {
       'https://livetech-ventas.up.railway.app',
       'http://localhost:3000',
       'http://localhost:3001',
+      'https://livetechbackend-ventas.up.railway.app',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
