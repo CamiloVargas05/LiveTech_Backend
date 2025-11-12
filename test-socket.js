@@ -3,11 +3,11 @@ const { io } = require('socket.io-client');
 const readline = require('readline');
 
 const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmOWUwNWRkNS05NDhmLTRkYjItYTM1Mi1hMTVkMDExY2JjNzYiLCJlbWFpbCI6Im1hbm9sb21hbm9saXRlQGdtYWlsLmNvbSIsInJvbGUiOiJ0ZWNuaWNvIiwiaWF0IjoxNzYyODE4MzQ4LCJleHAiOjE3NjM0MjMxNDh9.xKmDtYifEm6zZrjVImEksgv0y7Eh_TyYZy3vpFZVnts';
-const MANTENIMIENTO_ID = '1511332f-0041-4f43-b461-a4bfa04b2a3e';
+const MANTENIMIENTO_ID = '5b7cd643-f18f-4e23-bef9-da97ca4f185e';
 
 console.log('🔄 Conectando al WebSocket...\n');
 
-const socket = io('http://localhost:3000/streaming', {
+const socket = io('https://livetechbackend-ventas.up.railway.app/streaming', {
   auth: { token: TOKEN },
   transports: ['websocket']
 });

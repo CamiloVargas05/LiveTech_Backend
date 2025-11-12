@@ -56,12 +56,16 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
   // ==================== CONEXIÓN Y DESCONEXIÓN ====================
 
   afterInit(server: Server) {
-    this.logger.log('========================================');
-    this.logger.log('🚀 WebSocket Gateway INICIALIZADO');
-    this.logger.log('📡 Namespace: streaming'); // ← Sin barra
-    this.logger.log('🌐 Escuchando conexiones...');
-    this.logger.log('========================================');
-  }
+  this.logger.log('========================================');
+  this.logger.log('🚀 WebSocket Gateway INICIALIZADO');
+  this.logger.log('📡 Namespace: /streaming');
+  this.logger.log('🌍 Puerto:', process.env.PORT || 3000);
+  this.logger.log('🔗 CORS Origins:', [
+    'https://livetech-ventas.up.railway.app',
+    'http://localhost:3000',
+  ]);
+  this.logger.log('========================================');
+}
 
   async handleConnection(client: Socket) {
     this.logger.log('========================================');

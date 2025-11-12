@@ -9,19 +9,18 @@ async function bootstrap() {
   
   const configService = app.get(ConfigService);
 
-  // Configurar el adaptador de WebSocket (Socket.io)
+  // ⚠️ IMPORTANTE: IoAdapter ANTES de enableCors
   app.useWebSocketAdapter(new IoAdapter(app));
   
-  // Habilitar CORS para el frontend
+  // CORS
   app.enableCors({
     origin: [
-  configService.get('FRONTEND_URL'),
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'https://livetech-ventas.up.railway.app',
-  'https://livetechbackend-ventas.up.railway.app'
-].filter(Boolean),
+      'https://livetech-ventas.up.railway.app',
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   });
 
   app.useGlobalPipes(
@@ -32,12 +31,13 @@ async function bootstrap() {
     }),
   );
 
-  // Prefijo global para todas las rutas
+  // Solo REST API tiene prefijo, NO el WebSocket
   app.setGlobalPrefix('api');
 
   const port = configService.get('PORT') || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0'); // ⚠️ Escuchar en todas las interfaces
   
-  console.log(`🚀 LiveTech Backend running on: http://localhost:${port}/api`);
+  console.log(`🚀 Backend corriendo en puerto ${port}`);
+  console.log(`📡 WebSocket disponible en /streaming`);
 }
 bootstrap();
