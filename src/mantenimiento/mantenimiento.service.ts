@@ -428,37 +428,35 @@ private generarEmailMantenimientoFinalizado(nombreUsuario: string, nombreTecnico
             <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
               <!-- Header -->
               <tr>
-                <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center;">
-                  <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-                    <tr>
-                      <td style="background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); padding: 12px 24px; border-radius: 12px;">
-                        <table cellpadding="0" cellspacing="0">
-                          <tr>
-                            <td style="padding-right: 12px; vertical-align: middle;">
-                              <div style="width: 32px; height: 32px; background-color: white; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; padding: 8px;">
-                                <span style="font-size: 20px;">🎧</span>
-                              </div>
-                            </td>
-                            <td style="vertical-align: middle;">
-                              <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700; line-height: 1;">
-                                Live<span style="color: #d1fae5;">Tech</span>
-                              </h1>
-                            </td>
-                          </tr>
-                        </table>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
+  <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center;">
+    <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+      <tr>
+        <td style="; backdrop-filter: blur(10px); padding: 12px 24px; border-radius: 12px;">
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right: 12px; vertical-align: middle;">
+                <div style="width: 32px; height: 32px; background-color: rgba(255, 255, 255, 0.2); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; padding: 8px;">
+                  <span style="font-size: 20px; margin-left: 4px;">🎧</span>
+                </div>
+              </td>
+              <td style="vertical-align: middle;">
+                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700; line-height: 1;">
+                  Live<span style="color: #d1fae5;">Tech</span>
+                </h1>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
               
               <!-- Content -->
               <tr>
                 <td style="padding: 40px 30px;">
                   <div style="text-align: center; margin-bottom: 30px;">
-                    <div style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-                      <span style="font-size: 40px;">✅</span>
-                    </div>
+                    
                     <h2 style="color: #1f2937; font-size: 26px; margin: 0 0 12px 0; font-weight: 700;">¡Mantenimiento Completado!</h2>
                     <p style="color: #10b981; font-size: 16px; margin: 0; font-weight: 600;">Tu dispositivo está listo</p>
                   </div>
