@@ -350,40 +350,57 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
   @SubscribeMessage('chat-mensaje')
 async handleChatMensaje(
   @ConnectedSocket() client: Socket,
-  @MessageBody() data: { mantenimientoId: string; mensaje: string; clientId?: string; usuarioEmail?: string },
+  @MessageBody() data: { 
+    mantenimientoId: string; 
+    mensaje: string; 
+    clientId?: string; 
+    usuarioEmail?: string;
+    usuarioNombre?: string;
+  },
 ) {
   try {
     const sesion = this.sesionesActivas.get(data.mantenimientoId);
     if (!sesion) {
+      this.logger.error(`❌ Sesión no encontrada: ${data.mantenimientoId}`);
       client.emit('error', { message: 'Sesión no encontrada' });
       return;
     }
 
     const userId = client.data.userId;
-    const userName = client.data.userEmail;
+    const userEmail = client.data.userEmail;
 
     // Validar que el usuario pertenece a esta sesión
     if (userId !== sesion.tecnicoId && userId !== sesion.usuarioId) {
+      this.logger.error(`❌ Usuario ${userId} no autorizado en sesión ${data.mantenimientoId}`);
       client.emit('error', { message: 'No tienes permiso para enviar mensajes en este chat' });
       return;
     }
+    const socketsInRoom = await this.server.in(`mantenimiento-${data.mantenimientoId}`).fetchSockets();
+  this.logger.log(`👥 Sockets en la sala: ${socketsInRoom.length}`);
+  socketsInRoom.forEach(s => {
+    this.logger.log(`  - Socket: ${s.id} (${s.data.userEmail})`);
+  });
 
-    const mensaje: MensajeChat = {
+    const mensaje = {
       mantenimientoId: data.mantenimientoId,
       usuarioId: userId,
-      usuarioNombre: userName,
-      usuarioEmail: userName, // ← Agregar esto
+      usuarioNombre: data.usuarioNombre || userEmail,
+      usuarioEmail: userEmail,
       mensaje: data.mensaje,
       timestamp: new Date(),
-      clientId: data.clientId, // ← Agregar esto para tracking
+      clientId: data.clientId,
     };
+
+    this.logger.log(`💬 Mensaje de ${userEmail} en mantenimiento ${data.mantenimientoId}`);
+    this.logger.log(`📤 Enviando a sala: mantenimiento-${data.mantenimientoId}`);
 
     // Enviar mensaje a toda la sala (técnico y usuario)
     this.server.to(`mantenimiento-${data.mantenimientoId}`).emit('chat-mensaje', mensaje);
 
-    this.logger.log(`Mensaje en mantenimiento ${data.mantenimientoId}: ${data.mensaje}`);
+    this.logger.log(`✅ Mensaje enviado exitosamente`);
   } catch (error) {
     this.logger.error(`Error en chat: ${error.message}`);
+    client.emit('error', { message: 'Error al enviar mensaje' });
   }
 }
 
